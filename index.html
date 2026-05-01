@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cosmos Elite Hub v3.0</title>
+    <style>
+        :root {
+            --wood-light: #deb887; --wood-dark: #8b4513;
+            --neon: #00f3ff; --gold: #ffd700;
+            --cell-size: min(11vw, 50px);
+        }
+        body { margin: 0; background: #000; color: white; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; min-height: 100vh; overflow-x: hidden; }
+
+        /* --- ФОН --- */
+        .space-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: radial-gradient(circle at center, #0b0b1a 0%, #000 100%); z-index: -2; }
+        .stars { position: absolute; width: 200%; height: 200%; background-image: radial-gradient(1px 1px at 20px 30px, #fff, rgba(0,0,0,0)), radial-gradient(1px 1px at 100px 150px, #fff, rgba(0,0,0,0)); background-repeat: repeat; animation: moveStars 120s linear infinite; opacity: 0.4; }
+        @keyframes moveStars { from { transform: translateY(0); } to { transform: translateY(-50%); } }
+
+        /* --- НАВИГАЦИЯ --- */
+        .nav { margin: 15px; display: flex; gap: 8px; z-index: 100; flex-wrap: wrap; justify-content: center; }
+        .tab-btn { padding: 12px 20px; background: rgba(255,255,255,0.05); border: 1px solid #444; color: white; cursor: pointer; border-radius: 8px; transition: 0.3s; backdrop-filter: blur(5px); }
+        .tab-btn.active { background: var(--wood-dark); border-color: var(--neon); box-shadow: 0 0 15px var(--neon); }
+
+        /* --- АНИМАЦИЯ --- */
+        @keyframes tabEntrance { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .app-container { display: none; width: 100%; max-width: 1200px; gap: 20px; padding: 10px; box-sizing: border-box; justify-content: center; align-items: start; }
+        .app-container.active { display: flex; flex-wrap: wrap; animation: tabEntrance 0.5s ease-out forwards; }
+
+        /* --- ИГРЫ --- */
+        .board-wrapper { background: #3e1f07; padding: 10px; border-radius: 12px; box-shadow: 0 10px 40px #000; border: 2px solid #5d2e0a; }
+        .board { display: grid; grid-template-columns: repeat(8, var(--cell-size)); grid-template-rows: repeat(8, var(--cell-size)); border: 4px solid #2a1505; position: relative; }
+        .cell { width: var(--cell-size); height: var(--cell-size); display: flex; align-items: center; justify-content: center; position: relative; }
+        .dark { background: var(--wood-dark); }
+        .light { background: var(--wood-light); }
+
+        .piece { cursor: pointer; z-index: 10; user-select: none; transition: 0.25s; background: transparent !important; position: relative; }
+        .chess-p { font-size: calc(var(--cell-size) * 0.8); line-height: 1; }
+        .check-p { width: 85%; height: 85%; border-radius: 50%; border: 2px solid rgba(0,0,0,0.5); }
+        .white-pc { color: #fff; background: #fff !important; }
+        .black-pc { color: #000; background: #111 !important; border-color: #333; }
+        .chess-p.white-pc { background: transparent !important; filter: drop-shadow(0 0 2px #000); }
+        .chess-p.black-pc { background: transparent !important; filter: drop-shadow(0 0 2px #fff); }
+
+        .selected { outline: 3px solid var(--neon); transform: scale(1.1); z-index: 20; }
+        .king::after { content: '👑'; font-size: calc(var(--cell-size) * 0.4); position: absolute; color: gold; text-shadow: 0 0 5px black; }
+        .hint { width: 35%; height: 35%; background: rgba(0, 243, 255, 0.7); border-radius: 50%; cursor: pointer; z-index: 25; }
+
+        .side-panel { width: min(100%, 280px); background: rgba(20,20,30,0.8); padding: 15px; border-radius: 15px; border: 1px solid #333; backdrop-filter: blur(10px); }
+        .stat-bar { background: rgba(0, 0, 0, 0.6); border: 1px solid var(--gold); padding: 8px 15px; border-radius: 20px; display: flex; gap: 15px; margin-bottom: 10px; font-size: 0.9rem; color: var(--gold); }
+        
+        button, input, textarea { width: 100%; background: #000; color: #fff; border: 1px solid #444; padding: 10px; margin-top: 10px; border-radius: 8px; cursor: pointer; }
+
+        /* --- ИНСТРУМЕНТЫ (СЕТКА) --- */
+        .tools-grid { width: 100%; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .tool-card { background: rgba(255,255,255,0.07); padding: 20px; border-radius: 18px; border: 1px solid #555; backdrop-filter: blur(10px); }
+        .tool-card h3 { margin: 0 0 15px 0; color: var(--neon); font-size: 1.1rem; }
+
+        /* КАЛЬКУЛЯТОР ВНУТРИ */
+        .calc-box { display: flex; flex-direction: column; gap: 8px; }
+        .calc-screen { height: 50px; background: #000; border: 1px solid var(--neon); border-radius: 8px; color: var(--neon); text-align: right; padding: 10px; font-size: 1.5rem; }
+        .calc-btns { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+        .cb { padding: 10px; background: #222; border-radius: 5px; border: none; color: white; cursor: pointer; }
+        .cb:active { background: var(--neon); color: #000; }
+    </style>
+</head>
+<body>
+
+    <div class="space-bg"><div class="stars"></div></div>
+
+    <div class="nav">
+        <button class="tab-btn active" onclick="switchTab('checkers', this)">Шашки 🌌</button>
+        <button class="tab-btn" onclick="switchTab('chess', this)">Шахматы ♟️</button>
+        <button class="tab-btn" onclick="switchTab('tools', this)">Инструменты 🛠️</button>
+    </div>
+
+    <!-- ШАШКИ -->
+    <div id="checkers-tab" class="app-container active">
+        <div style="display: flex; flex-direction: column; align-items: center;">
+            <div class="stat-bar">🏆 ТУРНИР: ВЫ <span id="ch-p">0</span> — БОТ <span id="ch-b">0</span></div>
+            <div class="board-wrapper"><div class="board" id="ch-board"></div></div>
+        </div>
+        <div class="side-panel">
+            <h3 id="ch-turn" style="color:var(--neon); margin:0;">ХОД: БЕЛЫЕ</h3>
+            <button onclick="initCheckers()">Новая игра</button>
+        </div>
+    </div>
+
+    <!-- ШАХМАТЫ -->
+    <div id="chess-tab" class="app-container">
+        <div style="display: flex; flex-direction: column; align-items: center;">
+            <div class="stat-bar">🏆 ТУРНИР: ВЫ <span id="cs-p">0</span> — БОТ <span id="cs-b">0</span></div>
+            <div class="board-wrapper"><div class="board" id="cs-board"></div></div>
+        </div>
+        <div class="side-panel">
+            <h3 id="cs-turn" style="color:var(--neon); margin:0;">ХОД: БЕЛЫЕ</h3>
+            <button onclick="initChess()">Новая игра</button>
+        </div>
+    </div>
+
+    <!-- ИНСТРУМЕНТЫ -->
+    <div id="tools-tab" class="app-container">
+        <div class="tools-grid">
+            <!-- Калькулятор -->
+            <div class="tool-card">
+                <h3>🔢 Калькулятор</h3>
+                <div class="calc-box">
+                    <input type="text" id="cd" class="calc-screen" readonly value="0">
+                    <div class="calc-btns">
+                        <button class="cb" onclick="c_clr()">C</button><button class="cb" onclick="c_add('(')">(</button><button class="cb" onclick="c_add(')')">)</button><button class="cb" onclick="c_add('/')">/</button>
+                        <button class="cb" onclick="c_add('7')">7</button><button class="cb" onclick="c_add('8')">8</button><button class="cb" onclick="c_add('9')">9</button><button class="cb" onclick="c_add('*')">×</button>
+                        <button class="cb" onclick="c_add('4')">4</button><button class="cb" onclick="c_add('5')">5</button><button class="cb" onclick="c_add('6')">6</button><button class="cb" onclick="c_add('-')">-</button>
+                        <button class="cb" onclick="c_add('1')">1</button><button class="cb" onclick="c_add('2')">2</button><button class="cb" onclick="c_add('3')">3</button><button class="cb" onclick="c_add('+')">+</button>
+                        <button class="cb" style="grid-column: span 2" onclick="c_add('0')">0</button><button class="cb" onclick="c_add('.')">.</button>
+                        <button class="cb" style="background:var(--neon); color:#000" onclick="c_sol()">=</button>
+                    </div>
+                </div>
+            </div>
+            <!-- Заметки -->
+            <div class="tool-card">
+                <h3>🛰️ Заметки</h3>
+                <textarea id="note" style="height: 180px;" placeholder="Текст сохранится автоматически..." oninput="localStorage.setItem('cNote', this.value)"></textarea>
+            </div>
+            <!-- Таймер на отдых -->
+            <div class="tool-card">
+                <h3>⏱️ Таймер на отдых</h3>
+                <div id="pom-v" style="font-size: 3rem; text-align:center; color:var(--neon);">25:00</div>
+                <button onclick="startPom()" style="background:var(--neon); color:#000; font-weight:bold;">СТАРТ</button>
+                <button onclick="clearInterval(pInt)">СТОП</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+    let stats = JSON.parse(localStorage.getItem('cStats')) || { ch: {p:0, b:0}, cs: {p:0, b:0} };
+    let pInt;
+
+    function updateStats() {
+        document.getElementById('ch-p').innerText = stats.ch.p; document.getElementById('ch-b').innerText = stats.ch.b;
+        document.getElementById('cs-p').innerText = stats.cs.p; document.getElementById('cs-b').innerText = stats.cs.b;
+        localStorage.setItem('cStats', JSON.stringify(stats));
+    }
+
+    function switchTab(id, btn) {
+        document.querySelectorAll('.app-container').forEach(c => c.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(id + '-tab').classList.add('active');
+        btn.classList.add('active');
+        if(id==='checkers') initCheckers(); if(id==='chess') initChess();
+    }
+
+    // --- ИГРОВАЯ ЛОГИКА (ШАШКИ) ---
+    let chB = [], chT = 'white', chS = null;
+    function initCheckers() {
+        const b = document.getElementById('ch-board'); b.innerHTML = ''; chB = Array(8).fill().map(()=>Array(8).fill(null));
+        chT = 'white'; chS = null;
+        for(let r=0; r<8; r++) for(let c=0; c<8; c++) {
+            const cell = document.createElement('div'); cell.className = `cell ${(r+c)%2?'dark':'light'}`; cell.id = `ch-${r}-${c}`; b.appendChild(cell);
+            if((r+c)%2 && (r<3 || r>4)) chB[r][c] = {col: r<3?'black':'white', king:false};
+        }
+        renderCh();
+    }
+    function renderCh() {
+        document.getElementById('ch-turn').innerText = `ХОД: ${chT.toUpperCase()}`;
+        for(let r=0; r<8; r++) for(let c=0; c<8; c++) {
+            const cell = document.getElementById(`ch-${r}-${c}`); cell.innerHTML = '';
+            const p = chB[r][c]; if(p) {
+                const el = document.createElement('div'); el.className = `piece check-p ${p.col}-pc ${p.king?'king':''} ${chS&&chS.r==r&&chS.c==c?'selected':''}`;
+                el.onclick = () => { if(chT===p.col) { chS={r,c}; renderCh(); } }; cell.appendChild(el);
+            }
+        }
+        document.querySelectorAll('#ch-board .hint').forEach(h=>h.remove());
+        if(chS) getChM(chS.r, chS.c).forEach(m => {
+            const h = document.createElement('div'); h.className = 'hint'; h.onclick = () => {
+                if(m.e) chB[m.e.r][m.e.c] = null;
+                chB[m.tr][m.tc] = chB[chS.r][chS.c]; chB[chS.r][chS.c] = null;
+                if((chB[m.tr][m.tc].col==='white'&&m.tr===0)||(chB[m.tr][m.tc].col==='black'&&m.tr===7)) chB[m.tr][m.tc].king=true;
+                chS=null; chT=chT==='white'?'black':'white'; renderCh(); if(chT==='black') setTimeout(botCh, 600);
+            }; document.getElementById(`ch-${m.tr}-${m.tc}`).appendChild(h);
+        });
+    }
+    function getChM(r, c) {
+        const p = chB[r][c], m = [], dirs = [[1,1],[1,-1],[-1,1],[-1,-1]];
+        dirs.forEach(([dr, dc]) => {
+            let tr=r+dr, tc=c+dc;
+            if(tr>=0&&tr<8&&tc>=0&&tc<8) {
+                if(!chB[tr][tc] && (p.king || (p.col==='white'?dr<0:dr>0))) m.push({tr,tc});
+                let br=r+dr*2, bc=c+dc*2;
+                if(br>=0&&br<8&&bc>=0&&bc<8 && !chB[br][bc] && chB[tr][tc] && chB[tr][tc].col!==p.col) m.push({tr:br,tc:bc,e:{r:tr,c:tc}});
+            }
+        });
+        return m.filter(x=>x.e).length ? m.filter(x=>x.e) : m;
+    }
+    function botCh() {
+        let a=[]; chB.forEach((row,r)=>row.forEach((p,c)=>{ if(p&&p.col==='black') getChM(r,c).forEach(m=>a.push({r,c,m})) }));
+        if(a.length) { let b=a[Math.floor(Math.random()*a.length)]; chS={r:b.r,c:b.c}; document.querySelector('.hint')?.click(); }
+    }
+
+    // --- ШАХМАТЫ ---
+    let csB = [], csT = 'white', csS = null;
+    const icons = { white: {p:'♟', r:'♜', n:'♞', b:'♝', q:'♛', k:'♚'}, black: {p:'♟', r:'♜', n:'♞', b:'♝', q:'♛', k:'♚'} };
+    function initChess() {
+        const b = document.getElementById('cs-board'); b.innerHTML = ''; csB = Array(8).fill().map(()=>Array(8).fill(null));
+        csT='white'; csS=null; const row = ['r','n','b','q','k','b','n','r'];
+        for(let r=0; r<8; r++) for(let c=0; c<8; c++) {
+            const cell = document.createElement('div'); cell.className = `cell ${(r+c)%2?'dark':'light'}`; cell.id = `cs-${r}-${c}`; b.appendChild(cell);
+            if(r===0) csB[r][c]={t:row[c], col:'black'}; else if(r===1) csB[r][c]={t:'p', col:'black'};
+            else if(r===6) csB[r][c]={t:'p', col:'white'}; else if(r===7) csB[r][c]={t:row[c], col:'white'};
+        }
+        renderCs();
+    }
+    function renderCs() {
+        document.getElementById('cs-turn').innerText = `ХОД: ${csT.toUpperCase()}`;
+        for(let r=0; r<8; r++) for(let c=0; c<8; c++) {
+            const cell = document.getElementById(`cs-${r}-${c}`); cell.innerHTML = '';
+            const p = csB[r][c]; if(p) {
+                const el = document.createElement('div'); el.className = `piece chess-p ${p.col}-pc ${csS&&csS.r==r&&csS.c==c?'selected':''}`;
+                el.innerText = icons[p.col][p.t]; el.onclick = () => { if(csT===p.col) { csS={r,c}; renderCs(); } }; cell.appendChild(el);
+            }
+        }
+        document.querySelectorAll('#cs-board .hint').forEach(h=>h.remove());
+        if(csS) getCsM(csS.r, csS.c).forEach(m => {
+            const h = document.createElement('div'); h.className = 'hint'; h.onclick = () => {
+                if(csB[m.tr][m.tc]?.t==='k') { stats.cs[csT==='white'?'p':'b']++; updateStats(); alert("МАТ!"); initChess(); return; }
+                csB[m.tr][m.tc]=csB[csS.r][csS.c]; csB[csS.r][csS.c]=null;
+                csS=null; csT=csT==='white'?'black':'white'; renderCs(); if(csT==='black') setTimeout(botCs, 800);
+            }; document.getElementById(`cs-${m.tr}-${m.tc}`).appendChild(h);
+        });
+    }
+    function getCsM(r, c) {
+        const p = csB[r][c], m = [];
+        const dirs = {n:[[2,1],[2,-1],[-2,1],[-2,-1],[1,2],[1,-2],[-1,2],[-1,-2]], k:[[1,1],[1,0],[1,-1],[0,1],[0,-1],[-1,1],[-1,0],[-1,-1]], r:[[1,0],[-1,0],[0,1],[0,-1]], b:[[1,1],[1,-1],[-1,1],[-1,-1]]};
+        const d = p.t==='q' ? [...dirs.r, ...dirs.b] : (dirs[p.t] || []);
+        if(p.t==='p') {
+            let step = p.col==='white'?-1:1;
+            if(!csB[r+step][c]) m.push({tr:r+step, tc:c});
+            if(csB[r+step][c+1] && csB[r+step][c+1].col!==p.col) m.push({tr:r+step, tc:c+1});
+            if(csB[r+step][c-1] && csB[r+step][c-1].col!==p.col) m.push({tr:r+step, tc:c-1});
+        } else {
+            d.forEach(([dr, dc]) => {
+                let tr=r+dr, tc=c+dc;
+                while(tr>=0&&tr<8&&tc>=0&&tc<8) {
+                    if(!csB[tr][tc]) m.push({tr,tc});
+                    else { if(csB[tr][tc].col!==p.col) m.push({tr,tc}); break; }
+                    if(p.t==='n'||p.t==='k') break; tr+=dr; tc+=dc;
+                }
+            });
+        }
+        return m;
+    }
+    function botCs() {
+        let a=[]; csB.forEach((row,r)=>row.forEach((p,c)=>{ if(p&&p.col==='black') getCsM(r,c).forEach(m=>a.push({r,c,m})) }));
+        if(a.length) { let b=a[Math.floor(Math.random()*a.length)]; csS={r:b.r,c:b.c}; document.querySelector('.hint')?.click(); }
+    }
+
+    // --- УТИЛИТЫ ---
+    function c_add(v) { let s=document.getElementById('cd'); if(s.value==='0') s.value=v; else s.value+=v; }
+    function c_clr() { document.getElementById('cd').value = '0'; }
+    function c_sol() { try { document.getElementById('cd').value = eval(document.getElementById('cd').value); } catch { document.getElementById('cd').value='Error'; } }
+    
+    function startPom() { let s=1500; pInt = setInterval(()=>{ s--; let m=Math.floor(s/60), sec=s%60; document.getElementById('pom-v').innerText=`${m}:${sec<10?'0':''}${sec}`; if(s<=0) clearInterval(pInt); },1000); }
+
+    document.getElementById('note').value = localStorage.getItem('cNote') || '';
+    updateStats(); initCheckers();
+</script>
+</body>
+</html>
